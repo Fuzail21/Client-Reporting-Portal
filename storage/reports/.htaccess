@@ -1,0 +1,16 @@
+# Deny all access to report files
+# These files should only be served through the secure proxy (view_report.php)
+
+<IfModule mod_authz_core.c>
+    # Apache 2.4+
+    Require all denied
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+    # Apache 2.2
+    Order deny,allow
+    Deny from all
+</IfModule>
+
+# Disable directory listing
+Options -Indexes
