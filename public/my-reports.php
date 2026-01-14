@@ -40,19 +40,19 @@ $companyModel = new Company();
 $company = $companyModel->getById($companyId);
 $reportsByCategory = $reportModel->getByCompanyGroupedByCategory($companyId);
 
+// Filter to only categories that have reports
+$categoriesWithReports = [];
+foreach (REPORT_CATEGORIES as $cat) {
+    if (!empty($reportsByCategory[$cat])) {
+        $categoriesWithReports[] = $cat;
+    }
+}
+
 // Get active category from URL or default to first with reports
 $activeCategory = $_GET['category'] ?? null;
-if (!$activeCategory || !in_array($activeCategory, REPORT_CATEGORIES)) {
-    // Find first category with reports
-    foreach (REPORT_CATEGORIES as $cat) {
-        if (!empty($reportsByCategory[$cat])) {
-            $activeCategory = $cat;
-            break;
-        }
-    }
-    if (!$activeCategory) {
-        $activeCategory = REPORT_CATEGORIES[0];
-    }
+if (!$activeCategory || !in_array($activeCategory, $categoriesWithReports)) {
+    // Default to first category with reports
+    $activeCategory = !empty($categoriesWithReports) ? $categoriesWithReports[0] : null;
 }
 
 $pageTitle = 'My Reports';
@@ -69,37 +69,35 @@ include __DIR__ . '/includes/header.php';
     </div>
 </div>
 
-<!-- Category Tabs -->
-<ul class="nav nav-tabs mb-4">
-    <?php foreach (REPORT_CATEGORIES as $category): ?>
-        <?php $count = count($reportsByCategory[$category] ?? []); ?>
-        <li class="nav-item">
-            <a class="nav-link <?php echo $activeCategory === $category ? 'active' : ''; ?>"
-               href="?category=<?php echo urlencode($category); ?>">
-                <?php echo e($category); ?>
-                <?php if ($count > 0): ?>
-                    <span class="badge bg-warning text-dark ms-1"><?php echo $count; ?></span>
-                <?php endif; ?>
-            </a>
-        </li>
-    <?php endforeach; ?>
-</ul>
-
-<!-- Reports for Active Category -->
-<div class="tab-content">
-    <?php $reports = $reportsByCategory[$activeCategory] ?? []; ?>
-
-    <?php if (empty($reports)): ?>
-        <div class="card">
-            <div class="card-body">
-                <div class="empty-state">
-                    <i class="bi bi-file-earmark-x"></i>
-                    <h4>No <?php echo e($activeCategory); ?> Reports</h4>
-                    <p>There are no reports in this category yet.</p>
-                </div>
+<?php if (empty($categoriesWithReports)): ?>
+    <!-- No Reports at All -->
+    <div class="card">
+        <div class="card-body">
+            <div class="empty-state">
+                <i class="bi bi-file-earmark-x"></i>
+                <h4>No Reports Yet</h4>
+                <p>Reports will appear here once uploaded by your account manager.</p>
             </div>
         </div>
-    <?php else: ?>
+    </div>
+<?php else: ?>
+    <!-- Category Tabs - Only show categories with reports -->
+    <ul class="nav nav-tabs mb-4">
+        <?php foreach ($categoriesWithReports as $category): ?>
+            <?php $count = count($reportsByCategory[$category]); ?>
+            <li class="nav-item">
+                <a class="nav-link <?php echo $activeCategory === $category ? 'active' : ''; ?>"
+                   href="?category=<?php echo urlencode($category); ?>">
+                    <?php echo e($category); ?>
+                    <span class="badge bg-warning text-dark ms-1"><?php echo $count; ?></span>
+                </a>
+            </li>
+        <?php endforeach; ?>
+    </ul>
+
+    <!-- Reports for Active Category -->
+    <div class="tab-content">
+        <?php $reports = $reportsByCategory[$activeCategory] ?? []; ?>
         <div class="report-grid">
             <?php foreach ($reports as $report): ?>
                 <div class="report-card">
@@ -133,7 +131,7 @@ include __DIR__ . '/includes/header.php';
                 </div>
             <?php endforeach; ?>
         </div>
-    <?php endif; ?>
-</div>
+    </div>
+<?php endif; ?>
 
 <?php include __DIR__ . '/includes/footer.php'; ?>
