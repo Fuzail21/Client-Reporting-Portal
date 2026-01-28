@@ -271,4 +271,92 @@ class User {
             $_SERVER['REMOTE_ADDR'] ?? 'unknown'
         ]);
     }
+
+    // =====================================================
+    // Client-Company M:N Methods
+    // =====================================================
+
+    /**
+     * Get companies assigned to a client (M:N relationship)
+     */
+    public function getClientCompanies(int $clientId): array {
+        $stmt = $this->db->prepare("
+            SELECT c.*
+            FROM companies c
+            INNER JOIN client_assignments ca ON c.id = ca.company_id
+            WHERE ca.client_id = ?
+            ORDER BY c.name
+        ");
+        $stmt->execute([$clientId]);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Assign client to company
+     */
+    public function assignClientToCompany(int $clientId, int $companyId): bool {
+        $stmt = $this->db->prepare("
+            INSERT IGNORE INTO client_assignments (client_id, company_id)
+            VALUES (?, ?)
+        ");
+        return $stmt->execute([$clientId, $companyId]);
+    }
+
+    /**
+     * Remove client from company
+     */
+    public function removeClientFromCompany(int $clientId, int $companyId): bool {
+        $stmt = $this->db->prepare("
+            DELETE FROM client_assignments
+            WHERE client_id = ? AND company_id = ?
+        ");
+        return $stmt->execute([$clientId, $companyId]);
+    }
+
+    /**
+     * Update all client assignments
+     */
+    public function updateClientAssignments(int $clientId, array $companyIds): bool {
+        // First, remove all existing assignments
+        $stmt = $this->db->prepare("DELETE FROM client_assignments WHERE client_id = ?");
+        $stmt->execute([$clientId]);
+
+        // Then add new assignments
+        if (!empty($companyIds)) {
+            $stmt = $this->db->prepare("
+                INSERT INTO client_assignments (client_id, company_id) VALUES (?, ?)
+            ");
+            foreach ($companyIds as $companyId) {
+                $stmt->execute([$clientId, $companyId]);
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Check if client is assigned to company
+     */
+    public function isClientAssignedToCompany(int $clientId, int $companyId): bool {
+        $stmt = $this->db->prepare("
+            SELECT 1 FROM client_assignments
+            WHERE client_id = ? AND company_id = ?
+        ");
+        $stmt->execute([$clientId, $companyId]);
+        return (bool) $stmt->fetch();
+    }
+
+    /**
+     * Get clients assigned to a company
+     */
+    public function getClientsByCompany(int $companyId): array {
+        $stmt = $this->db->prepare("
+            SELECT u.id, u.name, u.email, u.is_active, ca.assigned_at
+            FROM users u
+            INNER JOIN client_assignments ca ON u.id = ca.client_id
+            WHERE ca.company_id = ? AND u.role = 'client'
+            ORDER BY u.name
+        ");
+        $stmt->execute([$companyId]);
+        return $stmt->fetchAll();
+    }
 }

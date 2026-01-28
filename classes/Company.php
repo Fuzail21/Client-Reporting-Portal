@@ -56,15 +56,15 @@ class Company {
     }
 
     /**
-     * Get companies with statistics
+     * Get companies with statistics (using M:N client_assignments)
      */
     public function getAllWithStats(): array {
         $stmt = $this->db->query("
             SELECT c.*,
-                   COUNT(DISTINCT CASE WHEN u.role = 'client' THEN u.id END) as client_count,
+                   COUNT(DISTINCT ca.client_id) as client_count,
                    COUNT(DISTINCT r.id) as report_count
             FROM companies c
-            LEFT JOIN users u ON c.id = u.company_id
+            LEFT JOIN client_assignments ca ON c.id = ca.company_id
             LEFT JOIN reports r ON c.id = r.company_id
             GROUP BY c.id
             ORDER BY c.name ASC
@@ -88,14 +88,15 @@ class Company {
     }
 
     /**
-     * Get clients for a company
+     * Get clients for a company (using M:N client_assignments)
      */
     public function getClients(int $companyId): array {
         $stmt = $this->db->prepare("
-            SELECT id, name, email, is_active, created_at
-            FROM users
-            WHERE company_id = ? AND role = 'client'
-            ORDER BY name
+            SELECT u.id, u.name, u.email, u.is_active, u.created_at, ca.assigned_at
+            FROM users u
+            INNER JOIN client_assignments ca ON u.id = ca.client_id
+            WHERE ca.company_id = ? AND u.role = 'client'
+            ORDER BY u.name
         ");
         $stmt->execute([$companyId]);
         return $stmt->fetchAll();

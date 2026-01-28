@@ -60,18 +60,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errors[] = 'Email is already in use.';
             }
 
-            // Company required for clients
-            if ($data['role'] === ROLE_CLIENT && empty($data['company_id'])) {
-                $errors[] = 'Company is required for client users.';
+            // Company assignments required for clients (M:N)
+            if ($data['role'] === ROLE_CLIENT && empty($_POST['assigned_companies'])) {
+                $errors[] = 'At least one company is required for client users.';
+            }
+
+            // Company assignments required for managers
+            if ($data['role'] === ROLE_MANAGER && empty($_POST['assigned_companies'])) {
+                $errors[] = 'At least one company is required for manager users.';
             }
 
             if (empty($errors)) {
                 if ($formAction === 'create') {
                     $newUserId = $userModel->create($data);
 
-                    // Handle manager assignments
+                    // Handle manager assignments (M:N)
                     if ($data['role'] === ROLE_MANAGER && !empty($_POST['assigned_companies'])) {
                         $userModel->updateManagerAssignments($newUserId, $_POST['assigned_companies']);
+                    }
+
+                    // Handle client assignments (M:N)
+                    if ($data['role'] === ROLE_CLIENT && !empty($_POST['assigned_companies'])) {
+                        $userModel->updateClientAssignments($newUserId, $_POST['assigned_companies']);
                     }
 
                     setFlashMessage('success', 'User created successfully.');
@@ -80,10 +90,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $updateId = (int) $_POST['user_id'];
                     $userModel->update($updateId, $data);
 
-                    // Handle manager assignments
+                    // Handle manager assignments (M:N)
                     if ($data['role'] === ROLE_MANAGER) {
                         $assignedCompanies = $_POST['assigned_companies'] ?? [];
                         $userModel->updateManagerAssignments($updateId, $assignedCompanies);
+                    }
+
+                    // Handle client assignments (M:N)
+                    if ($data['role'] === ROLE_CLIENT) {
+                        $assignedCompanies = $_POST['assigned_companies'] ?? [];
+                        $userModel->updateClientAssignments($updateId, $assignedCompanies);
                     }
 
                     setFlashMessage('success', 'User updated successfully.');
@@ -118,6 +134,8 @@ if ($action === 'edit' && $userId) {
     }
     if ($editUser['role'] === ROLE_MANAGER) {
         $userAssignedCompanies = array_column($userModel->getManagerCompanies($userId), 'id');
+    } elseif ($editUser['role'] === ROLE_CLIENT) {
+        $userAssignedCompanies = array_column($userModel->getClientCompanies($userId), 'id');
     }
 }
 
@@ -215,23 +233,9 @@ include __DIR__ . '/includes/header.php';
                     </div>
                 </div>
 
-                <!-- Company selection for Clients -->
-                <div class="mb-3" id="companyField" style="display: none;">
-                    <label for="company_id" class="form-label">Company *</label>
-                    <select class="form-select" id="company_id" name="company_id">
-                        <option value="">Select Company</option>
-                        <?php foreach ($companies as $company): ?>
-                            <option value="<?php echo $company['id']; ?>"
-                                <?php echo (($editUser['company_id'] ?? $_POST['company_id'] ?? '') == $company['id']) ? 'selected' : ''; ?>>
-                                <?php echo e($company['name']); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <!-- Company assignments for Managers -->
-                <div class="mb-3" id="managerAssignments" style="display: none;">
-                    <label class="form-label">Assigned Companies</label>
+                <!-- Company assignments for Managers and Clients (M:N) -->
+                <div class="mb-3" id="companyAssignments" style="display: none;">
+                    <label class="form-label">Assigned Companies *</label>
                     <div class="company-assignment-list">
                         <?php foreach ($companies as $company): ?>
                             <div class="company-assignment-item">
@@ -247,7 +251,7 @@ include __DIR__ . '/includes/header.php';
                             </div>
                         <?php endforeach; ?>
                     </div>
-                    <div class="form-text">Select companies this manager can access</div>
+                    <div class="form-text" id="assignmentHelpText">Select companies this user can access</div>
                 </div>
 
                 <div class="mb-4">
@@ -274,13 +278,22 @@ include __DIR__ . '/includes/header.php';
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const roleSelect = document.getElementById('role');
-            const companyField = document.getElementById('companyField');
-            const managerAssignments = document.getElementById('managerAssignments');
+            const companyAssignments = document.getElementById('companyAssignments');
+            const helpText = document.getElementById('assignmentHelpText');
 
             function toggleFields() {
                 const role = roleSelect.value;
-                companyField.style.display = role === 'client' ? 'block' : 'none';
-                managerAssignments.style.display = role === 'manager' ? 'block' : 'none';
+                // Show company assignments for both Manager and Client
+                if (role === 'manager' || role === 'client') {
+                    companyAssignments.style.display = 'block';
+                    if (role === 'manager') {
+                        helpText.textContent = 'Select companies this manager can access and upload reports';
+                    } else {
+                        helpText.textContent = 'Select companies/projects this client can view';
+                    }
+                } else {
+                    companyAssignments.style.display = 'none';
+                }
             }
 
             roleSelect.addEventListener('change', toggleFields);

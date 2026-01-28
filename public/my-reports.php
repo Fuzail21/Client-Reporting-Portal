@@ -2,17 +2,26 @@
 /**
  * Client Reports Page (Client View)
  * Client Reporting Portal
+ * Updated for M:N client-company relationship
  */
 
 require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../classes/User.php';
 require_once __DIR__ . '/../classes/Report.php';
 require_once __DIR__ . '/../classes/Company.php';
 
 requireRole([ROLE_CLIENT]);
 
-$companyId = getCurrentUserCompanyId();
+$userModel = new User();
+$reportModel = new Report();
+$companyModel = new Company();
 
-if (!$companyId) {
+$userId = getCurrentUserId();
+
+// Get all companies assigned to this client (M:N)
+$clientCompanies = $userModel->getClientCompanies($userId);
+
+if (empty($clientCompanies)) {
     $pageTitle = 'My Reports';
     include __DIR__ . '/includes/header.php';
     ?>
@@ -23,8 +32,8 @@ if (!$companyId) {
         <div class="card-body">
             <div class="empty-state">
                 <i class="bi bi-building-x"></i>
-                <h4>No Company Assigned</h4>
-                <p>Your account is not associated with any company.</p>
+                <h4>No Projects Assigned</h4>
+                <p>Your account is not associated with any projects.</p>
                 <p class="text-muted">Please contact your administrator.</p>
             </div>
         </div>
@@ -34,11 +43,27 @@ if (!$companyId) {
     exit;
 }
 
-$reportModel = new Report();
-$companyModel = new Company();
+// Get selected company from URL or default to first assigned company
+$selectedCompanyId = isset($_GET['company']) ? (int) $_GET['company'] : $clientCompanies[0]['id'];
 
-$company = $companyModel->getById($companyId);
-$reportsByCategory = $reportModel->getByCompanyGroupedByCategory($companyId);
+// Verify client has access to selected company
+$hasAccess = false;
+$selectedCompany = null;
+foreach ($clientCompanies as $company) {
+    if ($company['id'] === $selectedCompanyId) {
+        $hasAccess = true;
+        $selectedCompany = $company;
+        break;
+    }
+}
+
+if (!$hasAccess) {
+    $selectedCompanyId = $clientCompanies[0]['id'];
+    $selectedCompany = $clientCompanies[0];
+}
+
+// Get reports for selected company
+$reportsByCategory = $reportModel->getByCompanyGroupedByCategory($selectedCompanyId);
 
 // Filter to only categories that have reports
 $categoriesWithReports = [];
@@ -51,7 +76,6 @@ foreach (REPORT_CATEGORIES as $cat) {
 // Get active category from URL or default to first with reports
 $activeCategory = $_GET['category'] ?? null;
 if (!$activeCategory || !in_array($activeCategory, $categoriesWithReports)) {
-    // Default to first category with reports
     $activeCategory = !empty($categoriesWithReports) ? $categoriesWithReports[0] : null;
 }
 
@@ -64,10 +88,36 @@ include __DIR__ . '/includes/header.php';
         <h1 class="page-title">My Reports</h1>
         <p class="page-subtitle">
             <i class="bi bi-building me-1"></i>
-            <?php echo e($company['name'] ?? 'Your Company'); ?>
+            <?php echo e($selectedCompany['name']); ?>
         </p>
     </div>
 </div>
+
+<?php if (count($clientCompanies) > 1): ?>
+<!-- Project/Company Selector -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="" class="row g-3 align-items-end">
+            <div class="col-md-6">
+                <label for="company" class="form-label">Select Project/Company</label>
+                <select class="form-select" id="company" name="company" onchange="this.form.submit()">
+                    <?php foreach ($clientCompanies as $company): ?>
+                        <option value="<?php echo $company['id']; ?>"
+                            <?php echo ($selectedCompanyId === $company['id']) ? 'selected' : ''; ?>>
+                            <?php echo e($company['name']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <noscript>
+                    <button type="submit" class="btn btn-outline-warning">Switch Project</button>
+                </noscript>
+            </div>
+        </form>
+    </div>
+</div>
+<?php endif; ?>
 
 <?php if (empty($categoriesWithReports)): ?>
     <!-- No Reports at All -->
@@ -87,7 +137,7 @@ include __DIR__ . '/includes/header.php';
             <?php $count = count($reportsByCategory[$category]); ?>
             <li class="nav-item">
                 <a class="nav-link <?php echo $activeCategory === $category ? 'active' : ''; ?>"
-                   href="?category=<?php echo urlencode($category); ?>">
+                   href="?company=<?php echo $selectedCompanyId; ?>&category=<?php echo urlencode($category); ?>">
                     <?php echo e($category); ?>
                     <span class="badge bg-warning text-dark ms-1"><?php echo $count; ?></span>
                 </a>

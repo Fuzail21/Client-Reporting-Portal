@@ -222,9 +222,14 @@ class Report {
             return (bool) $stmt->fetch();
         }
 
-        // Client can only access reports from their company
+        // Client can access reports from their assigned companies (M:N)
         if ($userRole === ROLE_CLIENT) {
-            return $report['company_id'] === $userCompanyId;
+            $stmt = $this->db->prepare("
+                SELECT 1 FROM client_assignments
+                WHERE client_id = ? AND company_id = ?
+            ");
+            $stmt->execute([$userId, $report['company_id']]);
+            return (bool) $stmt->fetch();
         }
 
         return false;

@@ -45,6 +45,11 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link <?php echo $currentPage === 'todos' ? 'active' : ''; ?>" href="todos.php">
+                            <i class="bi bi-list-check"></i> To-Do List
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link <?php echo $currentPage === 'users' ? 'active' : ''; ?>" href="users.php">
                             <i class="bi bi-people"></i> Manage Users
                         </a>
@@ -72,6 +77,11 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link <?php echo $currentPage === 'todos' ? 'active' : ''; ?>" href="todos.php">
+                            <i class="bi bi-list-check"></i> To-Do List
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link <?php echo $currentPage === 'my-companies' ? 'active' : ''; ?>" href="my-companies.php">
                             <i class="bi bi-building"></i> My Companies
                         </a>
@@ -91,6 +101,11 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
                     <li class="nav-item">
                         <a class="nav-link <?php echo $currentPage === 'dashboard' ? 'active' : ''; ?>" href="dashboard.php">
                             <i class="bi bi-speedometer2"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo $currentPage === 'todos' ? 'active' : ''; ?>" href="todos.php">
+                            <i class="bi bi-list-check"></i> To-Do List
                         </a>
                     </li>
                     <li class="nav-item">
