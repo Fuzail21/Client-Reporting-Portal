@@ -175,6 +175,61 @@ class Report {
     }
 
     /**
+     * Get reports for a client using M:N client_assignments
+     */
+    public function getForClient(int $clientId, ?int $companyId = null, ?string $category = null): array {
+        $sql = "
+            SELECT r.*, c.name as company_name, u.name as uploader_name
+            FROM reports r
+            INNER JOIN client_assignments ca ON r.company_id = ca.company_id
+            LEFT JOIN companies c ON r.company_id = c.id
+            LEFT JOIN users u ON r.uploaded_by = u.id
+            WHERE ca.client_id = ?
+        ";
+        $params = [$clientId];
+
+        if ($companyId) {
+            $sql .= " AND r.company_id = ?";
+            $params[] = $companyId;
+        }
+        if ($category) {
+            $sql .= " AND r.category = ?";
+            $params[] = $category;
+        }
+
+        $sql .= " ORDER BY r.created_at DESC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Get report count by category for a client (M:N)
+     */
+    public function getCountByCategoryForClient(int $clientId): array {
+        $stmt = $this->db->prepare("
+            SELECT r.category, COUNT(*) as count
+            FROM reports r
+            INNER JOIN client_assignments ca ON r.company_id = ca.company_id
+            WHERE ca.client_id = ?
+            GROUP BY r.category
+        ");
+        $stmt->execute([$clientId]);
+        $results = $stmt->fetchAll();
+
+        $counts = [];
+        foreach (REPORT_CATEGORIES as $category) {
+            $counts[$category] = 0;
+        }
+        foreach ($results as $row) {
+            $counts[$row['category']] = (int) $row['count'];
+        }
+
+        return $counts;
+    }
+
+    /**
      * Get report count by category for a company
      */
     public function getCountByCategory(int $companyId): array {
@@ -255,13 +310,13 @@ class Report {
         // Check file extension
         $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         if (!in_array($extension, ALLOWED_EXTENSIONS)) {
-            $errors[] = 'Only HTML files (.html, .htm) are allowed.';
+            $errors[] = 'Only HTML (.html, .htm) and PDF (.pdf) files are allowed.';
         }
 
         // Additional MIME type check
         $finfo = new finfo(FILEINFO_MIME_TYPE);
         $mimeType = $finfo->file($file['tmp_name']);
-        $allowedMimes = ['text/html', 'text/plain', 'application/octet-stream'];
+        $allowedMimes = ['text/html', 'text/plain', 'application/octet-stream', 'application/pdf'];
         if (!in_array($mimeType, $allowedMimes)) {
             $errors[] = 'Invalid file type detected.';
         }

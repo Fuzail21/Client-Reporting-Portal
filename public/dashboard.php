@@ -51,19 +51,18 @@ if ($role === ROLE_SUPER_ADMIN) {
     $recentReports = array_slice($myReports, 0, 5);
 
 } else {
-    // Client sees their company reports
-    $companyId = getCurrentUserCompanyId();
-    if ($companyId) {
-        $myReports = $reportModel->getByCompany($companyId);
-        $categoryCounts = $reportModel->getCountByCategory($companyId);
+    // Client sees reports from all assigned companies (M:N relationship)
+    $myCompanies = $userModel->getClientCompanies($userId);
+    $myReports = $reportModel->getForClient($userId);
+    $categoryCounts = $reportModel->getCountByCategoryForClient($userId);
 
-        $stats = [
-            'total_reports' => count($myReports),
-            'categories' => $categoryCounts
-        ];
+    $stats = [
+        'assigned_companies' => count($myCompanies),
+        'total_reports' => count($myReports),
+        'categories' => $categoryCounts
+    ];
 
-        $recentReports = array_slice($myReports, 0, 5);
-    }
+    $recentReports = array_slice($myReports, 0, 5);
 }
 
 $pageTitle = 'Dashboard';
@@ -126,7 +125,14 @@ include __DIR__ . '/includes/header.php';
         </div>
 
     <?php else: ?>
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-3">
+            <div class="card stat-card">
+                <div class="stat-icon"><i class="bi bi-building"></i></div>
+                <div class="stat-value"><?php echo $stats['assigned_companies'] ?? 0; ?></div>
+                <div class="stat-label">My Projects</div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
             <div class="card stat-card">
                 <div class="stat-icon"><i class="bi bi-file-earmark-text-fill"></i></div>
                 <div class="stat-value"><?php echo $stats['total_reports'] ?? 0; ?></div>
@@ -136,11 +142,11 @@ include __DIR__ . '/includes/header.php';
         <?php if (isset($stats['categories'])): ?>
             <?php foreach ($stats['categories'] as $category => $count): ?>
                 <?php if ($count > 0): ?>
-                <div class="col-md-4">
+                <div class="col-md-6 col-lg-3">
                     <div class="card stat-card">
                         <div class="stat-icon"><i class="bi bi-tag-fill"></i></div>
                         <div class="stat-value"><?php echo $count; ?></div>
-                        <div class="stat-label"><?php echo e($category); ?> Reports</div>
+                        <div class="stat-label"><?php echo e($category); ?></div>
                     </div>
                 </div>
                 <?php endif; ?>
@@ -183,9 +189,7 @@ include __DIR__ . '/includes/header.php';
                                 <tr>
                                     <th>Title</th>
                                     <th>Category</th>
-                                    <?php if ($role !== ROLE_CLIENT): ?>
-                                        <th>Company</th>
-                                    <?php endif; ?>
+                                    <th>Project</th>
                                     <th>Date</th>
                                     <th>Actions</th>
                                 </tr>
@@ -205,9 +209,7 @@ include __DIR__ . '/includes/header.php';
                                                 <?php echo e($report['category']); ?>
                                             </span>
                                         </td>
-                                        <?php if ($role !== ROLE_CLIENT): ?>
-                                            <td><?php echo e($report['company_name']); ?></td>
-                                        <?php endif; ?>
+                                        <td><?php echo e($report['company_name'] ?? 'N/A'); ?></td>
                                         <td><?php echo date('M d, Y', strtotime($report['created_at'])); ?></td>
                                         <td>
                                             <a href="view_report.php?id=<?php echo $report['id']; ?>"

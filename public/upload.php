@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Validate file upload
         if (!isset($_FILES['report_file']) || $_FILES['report_file']['error'] === UPLOAD_ERR_NO_FILE) {
-            $errors[] = 'Please select an HTML file to upload.';
+            $errors[] = 'Please select an HTML or PDF file to upload.';
         } else {
             $fileErrors = $reportModel->validateUpload($_FILES['report_file']);
             $errors = array_merge($errors, $fileErrors);
@@ -106,7 +106,7 @@ include __DIR__ . '/includes/header.php';
 <div class="page-header">
     <div>
         <h1 class="page-title">Upload Report</h1>
-        <p class="page-subtitle">Upload a new HTML report for a client company</p>
+        <p class="page-subtitle">Upload a new HTML or PDF report for a client company</p>
     </div>
     <a href="reports.php" class="btn btn-outline-warning btn-icon">
         <i class="bi bi-arrow-left"></i> Back to Reports
@@ -178,14 +178,14 @@ include __DIR__ . '/includes/header.php';
                 </div>
 
                 <div class="mb-4">
-                    <label class="form-label">HTML Report File *</label>
-                    <input type="file" id="reportFile" name="report_file" accept=".html,.htm"
+                    <label class="form-label">Report File (HTML or PDF) *</label>
+                    <input type="file" id="reportFile" name="report_file" accept=".html,.htm,.pdf"
                            style="display: none;" required>
                     <div class="custom-file-upload">
-                        <i class="bi bi-file-earmark-code"></i>
+                        <i class="bi bi-file-earmark-richtext"></i>
                         <p>
-                            <strong>Click or drag</strong> to upload your HTML report<br>
-                            <small class="text-muted">Only .html and .htm files (max <?php echo MAX_FILE_SIZE / 1024 / 1024; ?>MB)</small>
+                            <strong>Click or drag</strong> to upload your report<br>
+                            <small class="text-muted">Allowed: .html, .htm, .pdf (max <?php echo MAX_FILE_SIZE / 1024 / 1024; ?>MB)</small>
                         </p>
                     </div>
                 </div>

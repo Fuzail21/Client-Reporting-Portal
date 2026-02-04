@@ -58,24 +58,34 @@ $userModel->logActivity(getCurrentUserId(), 'report_view',
     "Viewed report: {$report['title']} (ID: {$reportId})");
 
 // Serve the file
-$fileContent = file_get_contents($filePath);
 $fileSize = filesize($filePath);
+$extension = strtolower(pathinfo($report['file_name'], PATHINFO_EXTENSION));
 
-// Set appropriate headers
-header('Content-Type: text/html; charset=UTF-8');
-header('Content-Length: ' . $fileSize);
+// Set appropriate headers based on file type
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: SAMEORIGIN');
-
-// Allow inline styles and scripts for HTML reports to render properly
-// Also allow common CDNs for Bootstrap, Google Fonts, etc.
-header("Content-Security-Policy: default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https:; font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https:; frame-ancestors 'self';");
 
 // Prevent caching of confidential reports
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: 0');
 
-// Output the file content
-echo $fileContent;
+if ($extension === 'pdf') {
+    // Serve PDF file
+    header('Content-Type: application/pdf');
+    header('Content-Length: ' . $fileSize);
+    header('Content-Disposition: inline; filename="' . basename($report['original_name']) . '"');
+    readfile($filePath);
+} else {
+    // Serve HTML file
+    $fileContent = file_get_contents($filePath);
+    header('Content-Type: text/html; charset=UTF-8');
+    header('Content-Length: ' . $fileSize);
+
+    // Allow inline styles and scripts for HTML reports to render properly
+    // Also allow common CDNs for Bootstrap, Google Fonts, etc.
+    header("Content-Security-Policy: default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https:; font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https:; frame-ancestors 'self';");
+
+    echo $fileContent;
+}
 exit;

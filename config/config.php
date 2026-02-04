@@ -26,7 +26,7 @@ define('SESSION_LIFETIME', 3600); // 1 hour
 
 // File upload settings
 define('MAX_FILE_SIZE', 10 * 1024 * 1024); // 10MB
-define('ALLOWED_EXTENSIONS', ['html', 'htm']);
+define('ALLOWED_EXTENSIONS', ['html', 'htm', 'pdf']);
 
 // Report categories
 define('REPORT_CATEGORIES', ['SEO', 'SMM', 'Web Dev', 'Other']);
